@@ -6,9 +6,9 @@ import numpy as np
 
 class Problem:
     def __init__(self):
-        self.size = 8
+        self.size = 5
         self.board = np.full((self.size, self.size), "·")
-        self.player_turn = "x"
+        self.player_turn = "o"
         self.transposition_table = defaultdict(lambda: (None, None))
 
     def draw_board(self):
@@ -38,23 +38,30 @@ class Problem:
         self.board[x, y] = "·"
 
     def check_winner(self, player):
+        lines = []
+        for d in range(-self.size, self.size):
+            lines.append(
+                [
+                    self.board[i, i + d]
+                    for i in range(self.size)
+                    if 0 <= i < self.size and 0 <= i + d < self.size
+                ]
+            )
+            lines.append(
+                [
+                    self.board[i + d, i]
+                    for i in range(self.size)
+                    if 0 <= i < self.size and 0 <= i + d < self.size
+                ]
+            )
+
         for x in range(self.size):
-            for y in range(self.size):
-                if y <= self.size - 4 and np.all(self.board[x, y : y + 4] == player):
-                    return True
-                if x <= self.size - 4 and np.all(self.board[x : x + 4, y] == player):
-                    return True
-                if (
-                    x <= self.size - 4
-                    and y <= self.size - 4
-                    and np.all([self.board[x + i, y + i] == player for i in range(4)])
-                ):
-                    return True
-                if (
-                    x >= 3
-                    and y <= self.size - 4
-                    and np.all([self.board[x - i, y + i] == player for i in range(4)])
-                ):
+            lines.append(list(self.board[x, :]))
+            lines.append(list(self.board[:, x]))
+
+        for line in lines:
+            for i in range(len(line) - 3):
+                if all(line[i + j] == player for j in range(4)):
                     return True
         return False
 
@@ -66,209 +73,138 @@ class Problem:
             if self.board[x, y] == "·"
         ]
 
-    def utility(self, player):
-        opponent = "x" if player == "o" else "o"
-        score = 0
-        center_bonus = 1.5  # More weight for center pieces
-        # Additional weight for threat detection
-        threat_multiplier = 10
-
-        for x in range(self.size):
-            for y in range(self.size):
-                # Check all potential lines from this point
-                if y <= self.size - 4:  # Horizontal
-                    line = self.board[x, y : y + 4]
-                    score += self.evaluate_line(line, player)
-                    # Detect and react to immediate threats
-                    if (
-                        np.count_nonzero(line == opponent) == 3
-                        and np.count_nonzero(line == "·") == 1
-                    ):
-                        score -= threat_multiplier * self.evaluate_line(line, opponent)
-
-                if x <= self.size - 4:  # Vertical
-                    line = self.board[x : x + 4, y]
-                    score += self.evaluate_line(line, player)
-                    if (
-                        np.count_nonzero(line == opponent) == 3
-                        and np.count_nonzero(line == "·") == 1
-                    ):
-                        score -= threat_multiplier * self.evaluate_line(line, opponent)
-
-                if x <= self.size - 4 and y <= self.size - 4:  # Main diagonal
-                    line = self.board[
-                        np.ix_([x + i for i in range(4)], [y + i for i in range(4)])
-                    ].diagonal()
-                    score += self.evaluate_line(line, player)
-                    if (
-                        np.count_nonzero(line == opponent) == 3
-                        and np.count_nonzero(line == "·") == 1
-                    ):
-                        score -= threat_multiplier * self.evaluate_line(line, opponent)
-
-                if x >= 3 and y <= self.size - 4:  # Anti-diagonal
-                    line = self.board[
-                        np.ix_([x - i for i in range(4)], [y + i for i in range(4)])
-                    ].diagonal()
-                    score += self.evaluate_line(line, player)
-                    if (
-                        np.count_nonzero(line == opponent) == 3
-                        and np.count_nonzero(line == "·") == 1
-                    ):
-                        score -= threat_multiplier * self.evaluate_line(line, opponent)
-
-                # Center bonus
-                if x == self.size // 2 and y == self.size // 2:
-                    score += center_bonus * self.evaluate_line(
-                        np.array([self.board[x, y]]), player
-                    )
-        return score
-
-    def evaluate_line(self, line, player):
-        opponent = "x" if player == "o" else "o"
-        score = 0
-        player_count = np.count_nonzero(line == player)
-        opponent_count = np.count_nonzero(line == opponent)
-        empty_count = np.count_nonzero(line == "·")
-
-        if player_count == 4:
-            score += 10000  # Win
-        elif opponent_count == 4:
-            score -= 10000  # Block win
-        elif player_count == 3 and empty_count == 1:
-            score += 5000  # Almost winning
-        elif opponent_count == 3 and empty_count == 1:
-            score -= 5000  # Block opponent almost winning
-        elif player_count == 2 and empty_count == 2:
-            score += 2000  # Developing opportunity
-        elif opponent_count == 2 and empty_count == 2:
-            score -= 2000  # Block developing opportunity of opponent
-        elif player_count == 1 and empty_count == 3:
-            score += 1000  # Potential opportunity
-        elif opponent_count == 1 and empty_count == 3:
-            score -= 1000  # Potential threat
-        elif player_count == 3 and opponent_count == 1:
-            score += 500  # Potential opportunity
-        elif opponent_count == 3 and player_count == 1:
-            score -= 500  # Potential threat
-        elif player_count == 2 and opponent_count == 2:
-            score += 100  # Stalemate
-        elif opponent_count == 2 and player_count == 2:
-            score -= 100  # Stalemate
-
-        return score
-
 
 class SearchStrategy:
-    transposition_table = defaultdict(lambda: (None, None))
+    def __init__(self):
+        self.pattern_scores = {
+            "xxxx": 10000,
+            "ooo": -5000,
+            "xx·x": 500,
+            "x·xx": 500,
+            "·xxx·": 2000,
+            "·xx·": 100,
+            "·oo·": -100,
+            "x·x": 50,
+            "o·o": -50,
+        }
 
-    def get_sorted_moves(self, problem, player):
-        moves = problem.get_possible_moves()
-        moves.sort(
-            key=lambda move: self.simulate_move(problem, move, player), reverse=True
-        )
-        return moves
+    def evaluate_board(self, board):
+        score = 0
+        lines = []
+        for d in range(-board.shape[0] + 1, board.shape[0]):
+            lines.append(
+                "".join(
+                    [
+                        board[i, i + d]
+                        for i in range(board.shape[0])
+                        if 0 <= i < board.shape[0] and 0 <= i + d < board.shape[0]
+                    ]
+                )
+            )
+            lines.append(
+                "".join(
+                    [
+                        board[i + d, i]
+                        for i in range(board.shape[0])
+                        if 0 <= i < board.shape[0] and 0 <= i + d < board.shape[0]
+                    ]
+                )
+            )
 
-    def simulate_move(self, problem, move, player):
-        x, y = move
-        problem.place_move(x, y, player)
-        score = problem.utility(player)
-        problem.undo_move(x, y)
+        for x in range(board.shape[0]):
+            lines.append("".join(board[x, :]))
+            lines.append("".join(board[:, x]))
+
+        for line in lines:
+            for pattern, value in self.pattern_scores.items():
+                if pattern in line:
+                    score += value
         return score
 
-    def alpha_beta_search(self, problem, depth, alpha, beta, maximizingPlayer):
-        state_key = hash(problem.board.tostring())
-        
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
-
+    def alpha_beta_search(self, problem, depth, alpha, beta, maximizing_player):
         if depth == 0 or problem.is_goal():
-            score = problem.utility("o" if maximizingPlayer else "x")
-            self.transposition_table[state_key] = (None, score)
-            return None, score
+            return self.evaluate_board(problem.board), None
 
         best_move = None
-        if maximizingPlayer:
+        best_move = None
+        if maximizing_player:
             max_eval = float("-inf")
-            for x, y in self.get_sorted_moves(problem, "o"):
-                problem.place_move(x, y, "o")
-                _, eval = self.alpha_beta_search(problem, depth - 1, alpha, beta, False)
-                problem.undo_move(x, y)
+            moves = sorted(
+                problem.get_possible_moves(),
+                key=lambda m: self.evaluate_board_after_move(
+                    problem.board, m, problem.player_turn
+                ),
+                reverse=True,
+            )
+            for move in moves:
+                problem.place_move(*move, problem.player_turn)
+                eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, False)
+                problem.undo_move(*move)
                 if eval > max_eval:
                     max_eval = eval
-                    best_move = (x, y)
+                    best_move = move
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-            self.transposition_table[state_key] = (best_move, max_eval)
-            return best_move, max_eval
+            return max_eval, best_move
         else:
             min_eval = float("inf")
-            for x, y in self.get_sorted_moves(problem, "x"):
-                problem.place_move(x, y, "x")
-                _, eval = self.alpha_beta_search(problem, depth - 1, alpha, beta, True)
-                problem.undo_move(x, y)
+            moves = sorted(
+                problem.get_possible_moves(),
+                key=lambda m: self.evaluate_board_after_move(
+                    problem.board, m, problem.player_turn
+                ),
+            )
+            for move in moves:
+                problem.place_move(*move, problem.player_turn)
+                eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, True)
+                problem.undo_move(*move)
                 if eval < min_eval:
                     min_eval = eval
-                    best_move = (x, y)
+                    best_move = move
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
-            self.transposition_table[state_key] = (best_move, min_eval)
-            return best_move, min_eval
+            return min_eval, best_move
 
-
-def iterative_deepening_search(problem, strategy, max_depth=10):
-    best_move = None
-    best_eval = float("-inf")
-    for depth in range(1, max_depth + 1):
-        move, eval = strategy.alpha_beta_search(
-            problem, depth, float("-inf"), float("inf"), True
-        )
-        if eval > best_eval:
-            best_move = move
-            best_eval = eval
-    return best_move
+    def evaluate_board_after_move(self, board, move, player):
+        x, y = move
+        board[x, y] = player
+        score = self.evaluate_board(board)
+        board[x, y] = "·"
+        return score
 
 
 # Main
-def test():
+def play_game():
     problem = Problem()
     search_strategy = SearchStrategy()
-    problem.draw_board()
-    player = problem.player_turn
-
-    while True:
-        if player == "x":
-            x, y = map(int, input("Enter move (x y): ").split())
-            while not problem.place_move(x, y, player):
-                print("Invalid move. Please enter again.")
-                x, y = map(int, input("Enter move (x y): ").split())
-
-        else:
-            print("AI's turn")
-            move = iterative_deepening_search(problem, search_strategy, max_depth=30)
-            if move:
-                x, y = move
-                problem.place_move(x, y, player)
-                print(f"AI placed at {x} {y}")
-
-        # Clear the console and redraw the board
-        os.system("cls" if os.name == "nt" else "clear")
+    max_depth = 4  # Adjust depth based on game state if necessary
+    while not problem.is_goal() and any(problem.board.flatten() == "·"):
         problem.draw_board()
+        if problem.player_turn == "x":
+            print("AI's turn")
+            _, move = search_strategy.alpha_beta_search(
+                problem, max_depth, float("-inf"), float("inf"), True
+            )
+            if move:
+                problem.place_move(*move, "x")
+                print("AI placed at:", move)
+        else:
+            move = tuple(map(int, input("Enter your move (row col): ").split()))
+            while not problem.place_move(*move, "o"):
+                print("Invalid move, try again.")
+                move = tuple(map(int, input("Enter your move (row col): ").split()))
+        problem.player_turn = "o" if problem.player_turn == "x" else "x"
+        # os.system("cls" if os.name == "nt" else "clear")
 
-        # Check if there is a winner or the game is a draw
-        if problem.check_winner(player):
-            print(f"{player} wins!")
-            break
-        elif np.all(problem.board != "·"):
-            print("It's a draw!")
-            break
-
-        # Switch player
-        player = "o" if player == "x" else "x"
-
-    print("Game over!")
+    problem.draw_board()
+    if problem.check_winner("x"):
+        print("AI wins!")
+    elif problem.check_winner("o"):
+        print("Player wins!")
+    else:
+        print("It's a draw!")
 
 
-test()
+play_game()

@@ -1,4 +1,5 @@
 import os
+import time
 from collections import defaultdict
 
 import numpy as np
@@ -76,66 +77,31 @@ class Problem:
 
 class SearchStrategy:
     def __init__(self):
-        self.pattern_scores = {
-            "xxxx": 10000,
-            "ooo": -5000,
-            "xx·x": 500,
-            "x·xx": 500,
-            "·xxx·": 2000,
-            "·xx·": 100,
-            "·oo·": -100,
-            "x·x": 50,
-            "o·o": -50,
-        }
+        self.transposition_table = {}
 
     def evaluate_board(self, board):
         score = 0
-        lines = []
-        for d in range(-board.shape[0] + 1, board.shape[0]):
-            lines.append(
-                "".join(
-                    [
-                        board[i, i + d]
-                        for i in range(board.shape[0])
-                        if 0 <= i < board.shape[0] and 0 <= i + d < board.shape[0]
-                    ]
-                )
-            )
-            lines.append(
-                "".join(
-                    [
-                        board[i + d, i]
-                        for i in range(board.shape[0])
-                        if 0 <= i < board.shape[0] and 0 <= i + d < board.shape[0]
-                    ]
-                )
-            )
-
-        for x in range(board.shape[0]):
-            lines.append("".join(board[x, :]))
-            lines.append("".join(board[:, x]))
-
-        for line in lines:
-            for pattern, value in self.pattern_scores.items():
-                if pattern in line:
-                    score += value
+        # Example scoring: favor central positions
+        center = len(board) // 2
+        for x in range(len(board)):
+            for y in range(len(board)):
+                if board[x, y] == "x":
+                    score += 1 - (abs(x - center) + abs(y - center)) / center
+                elif board[x, y] == "o":
+                    score -= 1 - (abs(x - center) + abs(y - center)) / center
         return score
 
     def alpha_beta_search(self, problem, depth, alpha, beta, maximizing_player):
+        state_key = (tuple(map(tuple, problem.board)), maximizing_player, depth)
+        if state_key in self.transposition_table:
+            return self.transposition_table[state_key]
         if depth == 0 or problem.is_goal():
-            return self.evaluate_board(problem.board), None
-
+            score = self.evaluate_board(problem.board)
+            return score, None
         best_move = None
-        best_move = None
+        moves = problem.get_possible_moves()
         if maximizing_player:
             max_eval = float("-inf")
-            moves = sorted(
-                problem.get_possible_moves(),
-                key=lambda m: self.evaluate_board_after_move(
-                    problem.board, m, problem.player_turn
-                ),
-                reverse=True,
-            )
             for move in moves:
                 problem.place_move(*move, problem.player_turn)
                 eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, False)
@@ -146,15 +112,10 @@ class SearchStrategy:
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
+            self.transposition_table[state_key] = (max_eval, best_move)
             return max_eval, best_move
         else:
             min_eval = float("inf")
-            moves = sorted(
-                problem.get_possible_moves(),
-                key=lambda m: self.evaluate_board_after_move(
-                    problem.board, m, problem.player_turn
-                ),
-            )
             for move in moves:
                 problem.place_move(*move, problem.player_turn)
                 eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, True)
@@ -163,30 +124,38 @@ class SearchStrategy:
                     min_eval = eval
                     best_move = move
                 beta = min(beta, eval)
-                if beta <= alpha:
+                if alpha >= beta:
                     break
+            self.transposition_table[state_key] = (min_eval, best_move)
             return min_eval, best_move
 
-    def evaluate_board_after_move(self, board, move, player):
-        x, y = move
-        board[x, y] = player
-        score = self.evaluate_board(board)
-        board[x, y] = "·"
-        return score
+
+def iterative_deepening(problem, strategy, max_depth, timeout):
+    best_move = None
+    best_eval = float("-inf")
+    start_time = time.time()
+    for depth in range(1, max_depth + 1):
+        eval, move = strategy.alpha_beta_search(
+            problem, depth, float("-inf"), float("inf"), True
+        )
+        if eval > best_eval:
+            best_eval = eval
+            best_move = move
+        if time.time() - start_time > timeout:
+            break
+    return best_move
 
 
 # Main
 def play_game():
     problem = Problem()
-    search_strategy = SearchStrategy()
-    max_depth = 4  # Adjust depth based on game state if necessary
+    strategy = SearchStrategy()
     while not problem.is_goal() and any(problem.board.flatten() == "·"):
         problem.draw_board()
         if problem.player_turn == "x":
-            print("AI's turn")
-            _, move = search_strategy.alpha_beta_search(
-                problem, max_depth, float("-inf"), float("inf"), True
-            )
+            move = iterative_deepening(
+                problem, strategy, 5, 10
+            )  # Adjust depth and timeout as needed
             if move:
                 problem.place_move(*move, "x")
                 print("AI placed at:", move)
@@ -196,7 +165,7 @@ def play_game():
                 print("Invalid move, try again.")
                 move = tuple(map(int, input("Enter your move (row col): ").split()))
         problem.player_turn = "o" if problem.player_turn == "x" else "x"
-        # os.system("cls" if os.name == "nt" else "clear")
+        os.system("cls" if os.name == "nt" else "clear")
 
     problem.draw_board()
     if problem.check_winner("x"):

@@ -7,10 +7,9 @@ import numpy as np
 
 class Problem:
     def __init__(self):
-        self.size = 5
+        self.size = 8
         self.board = np.full((self.size, self.size), "·")
-        self.player_turn = "o"
-        self.transposition_table = defaultdict(lambda: (None, None))
+        self.player_turn = "x"
 
     def draw_board(self):
         print("  " + " ".join(str(i) for i in range(self.size)))
@@ -30,40 +29,48 @@ class Problem:
         )
 
     def place_move(self, x, y, player):
-        valid = self.is_valid_move(x, y)
-        if valid:
+        if self.is_valid_move(x, y):
             self.board[x, y] = player
-        return valid
+            return True
+        return False
 
     def undo_move(self, x, y):
         self.board[x, y] = "·"
 
     def check_winner(self, player):
-        lines = []
-        for d in range(-self.size, self.size):
-            lines.append(
-                [
-                    self.board[i, i + d]
-                    for i in range(self.size)
-                    if 0 <= i < self.size and 0 <= i + d < self.size
-                ]
-            )
-            lines.append(
-                [
-                    self.board[i + d, i]
-                    for i in range(self.size)
-                    if 0 <= i < self.size and 0 <= i + d < self.size
-                ]
-            )
+        # Check rows, columns, and diagonals for a win condition
+        for d in range(-self.size + 1, self.size):
+            # Check diagonals
+            diag1 = [
+                self.board[i, i + d]
+                for i in range(self.size)
+                if 0 <= i < self.size and 0 <= i + d < self.size
+            ]
+            diag2 = [
+                self.board[i, d + i]
+                for i in range(self.size)
+                if 0 <= i < self.size and 0 <= d + i < self.size
+            ]
+            if self.line_winner(diag1, player) or self.line_winner(diag2, player):
+                return True
+        # Check rows and columns
+        for i in range(self.size):
+            row = self.board[i, :]
+            col = self.board[:, i]
+            if self.line_winner(row, player) or self.line_winner(col, player):
+                return True
+        return False
 
-        for x in range(self.size):
-            lines.append(list(self.board[x, :]))
-            lines.append(list(self.board[:, x]))
-
-        for line in lines:
-            for i in range(len(line) - 3):
-                if all(line[i + j] == player for j in range(4)):
+    def line_winner(self, line, player):
+        # Check if there are four consecutive player tokens in a line
+        count = 0
+        for cell in line:
+            if cell == player:
+                count += 1
+                if count == 4:
                     return True
+            else:
+                count = 0
         return False
 
     def get_possible_moves(self):
@@ -76,96 +83,96 @@ class Problem:
 
 
 class SearchStrategy:
-    def __init__(self):
-        self.transposition_table = {}
-
-    def evaluate_board(self, board):
-        score = 0
-        # Example scoring: favor central positions
-        center = len(board) // 2
-        for x in range(len(board)):
-            for y in range(len(board)):
-                if board[x, y] == "x":
-                    score += 1 - (abs(x - center) + abs(y - center)) / center
-                elif board[x, y] == "o":
-                    score -= 1 - (abs(x - center) + abs(y - center)) / center
-        return score
-
-    def alpha_beta_search(self, problem, depth, alpha, beta, maximizing_player):
-        state_key = (tuple(map(tuple, problem.board)), maximizing_player, depth)
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
+    def alpha_beta_search(
+        self,
+        problem,
+        depth,
+        alpha=-float("inf"),
+        beta=float("inf"),
+        maximizing_player=True,
+    ):
         if depth == 0 or problem.is_goal():
-            score = self.evaluate_board(problem.board)
-            return score, None
-        best_move = None
-        moves = problem.get_possible_moves()
+            return self.evaluate(problem), None
+
         if maximizing_player:
-            max_eval = float("-inf")
-            for move in moves:
-                problem.place_move(*move, problem.player_turn)
+            max_eval = -float("inf")
+            best_move = None
+            for x, y in problem.get_possible_moves():
+                problem.place_move(x, y, "x")
                 eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, False)
-                problem.undo_move(*move)
+                problem.undo_move(x, y)
                 if eval > max_eval:
                     max_eval = eval
-                    best_move = move
+                    best_move = (x, y)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-            self.transposition_table[state_key] = (max_eval, best_move)
             return max_eval, best_move
         else:
             min_eval = float("inf")
-            for move in moves:
-                problem.place_move(*move, problem.player_turn)
+            best_move = None
+            for x, y in problem.get_possible_moves():
+                problem.place_move(x, y, "o")
                 eval, _ = self.alpha_beta_search(problem, depth - 1, alpha, beta, True)
-                problem.undo_move(*move)
+                problem.undo_move(x, y)
                 if eval < min_eval:
                     min_eval = eval
-                    best_move = move
+                    best_move = (x, y)
                 beta = min(beta, eval)
-                if alpha >= beta:
+                if beta <= alpha:
                     break
-            self.transposition_table[state_key] = (min_eval, best_move)
             return min_eval, best_move
 
+    def evaluate(self, problem):
+        score = 0
+        player, opponent = ("X", "O") if problem.player_turn == "X" else ("O", "X")
 
-def iterative_deepening(problem, strategy, max_depth, timeout):
-    best_move = None
-    best_eval = float("-inf")
-    start_time = time.time()
-    for depth in range(1, max_depth + 1):
-        eval, move = strategy.alpha_beta_search(
-            problem, depth, float("-inf"), float("inf"), True
-        )
-        if eval > best_eval:
-            best_eval = eval
-            best_move = move
-        if time.time() - start_time > timeout:
-            break
-    return best_move
+        lines = []
+        # Same as check_winner but used for scoring
+        for i in range(problem.size):
+            lines.append(problem.board[i, :])
+            lines.append(problem.board[:, i])
+
+        for d in range(-problem.size + 4, problem.size - 3):
+            lines.append(np.diagonal(problem.board, offset=d))
+            lines.append(np.diagonal(np.fliplr(problem.board), offset=d))
+
+        for line in lines:
+            line_str = "".join(line)
+            score += line_str.count(player * 4) * 100
+            score -= line_str.count(opponent * 4) * 100
+            score += line_str.count(player * 3 + "·") * 10
+            score -= line_str.count(opponent * 3 + "·") * 10
+            score += line_str.count("·" + player * 3) * 10
+            score -= line_str.count("·" + opponent * 3) * 10
+
+        return score
 
 
-# Main
+# Main game loop
 def play_game():
-    problem = Problem()
+    problem = Problem()  # Using the modified Problem class with 8x8 board
     strategy = SearchStrategy()
     while not problem.is_goal() and any(problem.board.flatten() == "·"):
         problem.draw_board()
-        if problem.player_turn == "x":
-            move = iterative_deepening(
-                problem, strategy, 5, 10
-            )  # Adjust depth and timeout as needed
+        if problem.player_turn == "x":  # AI plays as 'x'
+            print("AI is thinking...")
+            _, move = strategy.alpha_beta_search(
+                problem, depth=3
+            )  # Using Alpha Beta with depth=3
             if move:
                 problem.place_move(*move, "x")
-                print("AI placed at:", move)
-        else:
+            problem.player_turn = "o"
+        else:  # Human plays as 'o'
             move = tuple(map(int, input("Enter your move (row col): ").split()))
             while not problem.place_move(*move, "o"):
                 print("Invalid move, try again.")
                 move = tuple(map(int, input("Enter your move (row col): ").split()))
-        problem.player_turn = "o" if problem.player_turn == "x" else "x"
-        os.system("cls" if os.name == "nt" else "clear")
+            problem.player_turn = "x"
+
+        os.system(
+            "cls" if os.name == "nt" else "clear"
+        )  # Clear the console to redraw the board cleanly
 
     problem.draw_board()
     if problem.check_winner("x"):
@@ -177,3 +184,11 @@ def play_game():
 
 
 play_game()
+
+p = Problem()
+s = SearchStrategy()
+
+# start = time.time()
+# move = s.alpha_beta_search(p)
+# print(move)
+# print("Time:", time.time() - start)

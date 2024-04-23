@@ -1,44 +1,36 @@
 import os
 
-from problem import Problem
-from search import SearchStrategy
+import problem
+import search
+
+p = problem.Problem()
+s = search.SearchStrategy()
 
 
 def play_game():
-    p = Problem()
-    strategy = SearchStrategy()
+    while not p.is_goal():
+        p.draw_board()
 
-    while not p.game_over():
+        if p.player_turn == "x":
+            print("AI is thinking...")
+            move = s.alpha_beta_search(p, limit_depth=10)
+            p.make_move(*move, "x")
+        else:
+            x, y = map(int, input("Enter your move (x y): ").split())
+            while not p.make_move(x, y, "o"):
+                x, y = map(int, input("Invalid move. Enter your move (x y): ").split())
+
+        p.player_turn = "o" if p.player_turn == "x" else "x"
 
         os.system("cls" if os.name == "nt" else "clear")
 
-        p.draw_board()
-        if p.player_turn == "X":
-            # Player X's turn (Human)
-            try:
-                x, y = map(int, input("Enter your move (x y): ").strip().split())
-                while not p.is_valid_move(x, y):
-                    print("Invalid move. Try again.")
-                    x, y = map(int, input("Enter your move (x y): ").strip().split())
-            except ValueError:
-                print("Please enter valid integer coordinates.")
-                continue
-            p.place_move(x, y)
-        else:
-            # Player O's turn (Computer)
-            x, y = strategy.alpha_beta_search(p)
-            if x is not None and y is not None:
-                p.place_move(x, y)
-            else:
-                print("No valid moves left for the computer.")
-
     p.draw_board()
-    winner = p.check_winner()
-    if winner is None:
-        print("It's a draw.")
+    if p.check_winner("x"):
+        print("AI wins!")
+    elif p.check_winner("o"):
+        print("You win!")
     else:
-        print(f"Player {winner} wins.")
+        print("It's a draw!")
 
 
-if __name__ == "__main__":
-    play_game()
+play_game()

@@ -6,6 +6,7 @@ class Problem:
         self.size = 8
         self.board = np.full((self.size, self.size), "·")
         self.player_turn = "x"
+        self.transposition_table = {}
 
     def draw_board(self):
         print("  " + " ".join(str(i) for i in range(self.size)))
@@ -23,6 +24,9 @@ class Problem:
 
     def undo_move(self, x, y):
         self.board[x][y] = "·"
+
+    def hash_board(self):
+        return hash(self.board.tostring())
 
     def get_all_lines(self):
         lines = []
@@ -48,7 +52,7 @@ class Problem:
                     if np.array_equal(line[i : i + 4], win_condition):
                         return True
         return False
-    
+
     def is_goal(self):
         return any(self.check_winner(p) for p in ["x", "o"]) or not np.any(
             self.board == "·"
@@ -62,41 +66,47 @@ class Problem:
             if self.board[i][j] == "·"
         ]
 
-    def evaluate_line(self, line, player):
-        opp_player = "o" if player == "x" else "x"
-        line_score = 0
-
-        for i in range(len(line) - 3):
-            segment = line[i : i + 4]
-            count_player = np.count_nonzero(segment == player)
-            count_opp = np.count_nonzero(segment == opp_player)
-            count_open = np.count_nonzero(segment == "·")
-
-            # Đánh giá cho AI
-            if count_player == 4:
-                line_score += 10000  # Chiến thắng
-            elif count_player == 3 and count_open == 1:
-                line_score += 500  # Sắp thắng
-            elif count_player == 2 and count_open == 2:
-                line_score += 100  # Phát triển dãy thắng
-            elif count_player == 1 and count_open == 3:
-                line_score += 10  # Phát triển dãy thắng
-
-            # Phát hiện và đánh giá các mối đe dọa từ đối thủ
-            if count_opp == 3 and count_open == 1:
-                line_score -= 800  # Đối thủ sắp thắng, cần chặn
-            if count_opp == 2 and count_open == 2:
-                line_score -= 400  # Đối thủ có khả năng phát triển thành dãy thắng
-            if count_opp == 1 and count_open == 3:
-                line_score -= 40
-        return line_score
-
     def evaluate(self):
         score = 0
         lines = self.get_all_lines()
 
         for line in lines:
-            score += self.evaluate_line(line, "x")
-            score -= self.evaluate_line(line, "o")
-
+            score += self.evaluate_line(line, "x") - self.evaluate_line(line, "o")
         return score
+
+    def evaluate_line(self, line, player):
+        opponent = "o" if player == "x" else "x"
+        line_score = 0
+        line_str = "".join(line)
+        patterns = {
+            f"{player}{player}{player}{player}": 100000,  # Immediate win
+            f"{player}{player}{player}·": 1000,  # Threat to win
+            f"-{player}{player}{player}": 1000,  # Threat to win
+            f"{player}{player}·": 100,  # Two with space
+            f"-{player}{player}": 100,  # Two with space
+            f"{player}·": 10,  # Single piece potential
+            f"-{player}": 10,  # Single piece potential
+            f"{player}{player}· ·{player}": 1500,  # Split three (flexible threat)
+            f"{player}· ·{player}{player}": 1500,  # Split three (flexible threat)
+        }
+
+        # Add score for player patterns
+        for pattern, value in patterns.items():
+            occurrences = line_str.count(pattern)
+            line_score += occurrences * value
+
+        # Check for opponent's threats and increase their score impact
+        threat_patterns = {
+            f"{opponent}{opponent}{opponent}{opponent}": -100000,  # Opponent wins
+            f"{opponent}{opponent}{opponent}·": -1000,  # Block opponent's next move win
+            f"-{opponent}{opponent}{opponent}": -1000,  # Block opponent's next move win
+            f"{opponent}{opponent}· ·{opponent}": -1500,  # Block flexible threat
+            f"{opponent}· ·{opponent}{opponent}": -1500,  # Block flexible threat
+        }
+
+        # Add score for blocking opponent patterns
+        for pattern, value in threat_patterns.items():
+            occurrences = line_str.count(pattern)
+            line_score += occurrences * value
+
+        return line_score

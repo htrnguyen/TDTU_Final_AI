@@ -4,9 +4,9 @@ import numpy as np
 
 
 class TicTacToe:
-    def __init__(self, size=8):
-        self.size = size
-        self.board = np.full((size, size), "·")
+    def __init__(self):
+        self.size = 8
+        self.board = np.full((self.size, self.size), "-")
         self.player_turn = "x"
         self.transposition_table = {}
 
@@ -16,7 +16,7 @@ class TicTacToe:
             print(str(i) + " " + " ".join(self.board[i]))
 
     def is_valid_move(self, x, y):
-        return 0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == "·"
+        return 0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == "-"
 
     def make_move(self, x, y, player):
         if self.is_valid_move(x, y):
@@ -25,7 +25,7 @@ class TicTacToe:
         return False
 
     def undo_move(self, x, y):
-        self.board[x][y] = "·"
+        self.board[x][y] = "-"
 
     def check_winner(self, player):
         lines = []
@@ -49,7 +49,7 @@ class TicTacToe:
 
     def is_terminal(self):
         return any(self.check_winner(p) for p in ["x", "o"]) or not np.any(
-            self.board == "·"
+            self.board == "-"
         )
 
     def get_possible_moves(self):
@@ -57,174 +57,165 @@ class TicTacToe:
             (i, j)
             for i in range(self.size)
             for j in range(self.size)
-            if self.board[i][j] == "·"
+            if self.board[i][j] == "-"
         ]
 
-    def get_all_lines(self):
+    def hash_board(self):
+        return hash(self.board.tostring())
+
+    def evaluate(self):
+        score = 0
         lines = []
         for i in range(self.size):
             lines.append(self.board[i, :])
             lines.append(self.board[:, i])
-
         diagonals = [self.board.diagonal(i) for i in range(-self.size + 1, self.size)]
         diagonals.extend(
             self.board[:, ::-1].diagonal(i) for i in range(-self.size + 1, self.size)
         )
         lines.extend(diagonals)
-        return lines
+
+        # Evaluate each line for both players
+        for line in lines:
+            score += self.evaluate_line(line, "x") - self.evaluate_line(line, "o")
+        return score
 
     def evaluate_line(self, line, player):
-        opp_player = "o" if player == "x" else "x"
+        opponent = "o" if player == "x" else "x"
         line_score = 0
+        line_str = "".join(line)
+        patterns = {
+            f"{player}{player}{player}{player}": 100000,  # Immediate win
+            f"{player}{player}{player}-": 1000,  # Threat to win
+            f"-{player}{player}{player}": 1000,  # Threat to win
+            f"{player}{player}-": 100,  # Two with space
+            f"-{player}{player}": 100,  # Two with space
+            f"{player}-": 10,  # Single piece potential
+            f"-{player}": 10,  # Single piece potential
+            f"{player}{player}- -{player}": 1500,  # Split three (flexible threat)
+            f"{player}- -{player}{player}": 1500,  # Split three (flexible threat)
+        }
 
-        for i in range(len(line) - 3):
-            segment = line[i : i + 4]
-            count_player = np.count_nonzero(segment == player)
-            count_opp = np.count_nonzero(segment == opp_player)
-            count_open = np.count_nonzero(segment == "·")
+        # Add score for player patterns
+        for pattern, value in patterns.items():
+            occurrences = line_str.count(pattern)
+            line_score += occurrences * value
 
-            # Đánh giá cho AI
-            if count_player == 4:
-                line_score += 10000  # Chiến thắng
-            elif count_player == 3 and count_open == 1:
-                line_score += 500  # Sắp thắng
-            elif count_player == 2 and count_open == 2:
-                line_score += 100  # Phát triển dãy thắng
-            elif count_player == 1 and count_open == 3:
-                line_score += 10  # Phát triển dãy thắng
+        # Check for opponent's threats and increase their score impact
+        threat_patterns = {
+            f"{opponent}{opponent}{opponent}{opponent}": -100000,  # Opponent wins
+            f"{opponent}{opponent}{opponent}-": -1000,  # Block opponent's next move win
+            f"-{opponent}{opponent}{opponent}": -1000,  # Block opponent's next move win
+            f"{opponent}{opponent}- -{opponent}": -1500,  # Block flexible threat
+            f"{opponent}- -{opponent}{opponent}": -1500,  # Block flexible threat
+        }
 
-            # Phát hiện và đánh giá các mối đe dọa từ đối thủ
-            if count_opp == 3 and count_open == 1:
-                line_score -= 800  # Đối thủ sắp thắng, cần chặn
-            if count_opp == 2 and count_open == 2:
-                line_score -= 400  # Đối thủ có khả năng phát triển thành dãy thắng
-            if count_opp == 1 and count_open == 3:
-                line_score -= 40
+        # Add score for blocking opponent patterns
+        for pattern, value in threat_patterns.items():
+            occurrences = line_str.count(pattern)
+            line_score += occurrences * value
+
         return line_score
 
-    def evaluate(self):
-        score = 0
-        lines = self.get_all_lines()
 
-        for line in lines:
-            score += self.evaluate_line(line, "x")
-            score -= self.evaluate_line(line, "o")
+class SearchStrategy:
+    def alpha_beat_search(
+        self,
+        problem,
+        depth,
+        alpha,
+        beta,
+        max_player=True,
+    ):
+        board_hash = problem.hash_board()
+        if board_hash in problem.transposition_table:
+            return problem.transposition_table[board_hash], None
 
-        return score
-
-    def heuristic(self, move):
-        self.board[move[0], move[1]] = self.player_turn
-        score = self.evaluate()
-        self.board[move[0], move[1]] = "·"
-        return score
-
-    def minimax(self, depth, alpha, beta, maximizing_player):
-        state_key = (self.board.tobytes(), maximizing_player)
-
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
-
-        if depth == 0 or self.is_terminal():
-            return self.evaluate(), None
+        if depth == 0 or problem.is_terminal():
+            return problem.evaluate(), None
 
         best_move = None
-        moves = self.get_possible_moves()
+        if max_player:
+            max_value = float("-inf")
+            for move in problem.get_possible_moves():
+                problem.make_move(*move, "x")
+                eval, _ = self.alpha_beat_search(problem, depth - 1, alpha, beta, False)
+                problem.undo_move(*move)
 
-        if maximizing_player:
-            max_eval = float("-inf")
-            for move in moves:
-                self.board[move[0], move[1]] = "x"
-                eval, _ = self.minimax(depth - 1, alpha, beta, False)
-                self.board[move[0], move[1]] = "·"
-
-                if eval > max_eval:
-                    max_eval = eval
+                if eval > max_value:
+                    max_value = eval
                     best_move = move
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
 
-            self.transposition_table[state_key] = max_eval, best_move
-            return max_eval, best_move
-
+            problem.transposition_table[board_hash] = max_value
+            return max_value, best_move
         else:
-            min_eval = float("inf")
-            for move in moves:
-                self.board[move[0], move[1]] = "o"
-                eval, _ = self.minimax(depth - 1, alpha, beta, True)
-                self.board[move[0], move[1]] = "·"
+            min_value = float("inf")
+            for move in problem.get_possible_moves():
+                problem.make_move(*move, "o")
+                eval, _ = self.alpha_beat_search(problem, depth - 1, alpha, beta, True)
+                problem.undo_move(*move)
 
-                if eval < min_eval:
-                    min_eval = eval
+                if eval < min_value:
+                    min_value = eval
                     best_move = move
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
 
-            self.transposition_table[state_key] = min_eval, best_move
-            return min_eval, best_move
+            problem.transposition_table[board_hash] = min_value
+            return min_value, best_move
 
-    def iterative_deepening(self, limit_depth):
+    def find_best_move(self, problem, depth=4):
         best_move = None
-        best_score = float("-inf") if self.player_turn == "x" else float("inf")
-        depth = 1
+        best_value = float("-inf")
 
-        start_time = time.time()
-        while True:
-            current_time = time.time()
-            if current_time - start_time >= 5:
-                break
-
-            temp_score, temp_move = self.minimax(
-                depth, float("-inf"), float("inf"), True
+        for depth in range(1, depth + 1):
+            value, move = self.alpha_beat_search(
+                problem, depth, float("-inf"), float("inf"), True
             )
+            if value > best_value:
+                best_value = value
+                best_move = move
 
-            if self.player_turn == "x" and temp_score > best_score:
-                best_score = temp_score
-                best_move = temp_move
-            elif self.player_turn == "o" and temp_score < best_score:
-                best_score = temp_score
-                best_move = temp_move
-
-            # print(
-            #     f"Depth: {depth}, Best move: {best_move}, Best score: {best_score}, Time: {current_time - start_time}"
-            # )
-            depth += 1
-
-            if depth > limit_depth:
-                break
-        print("Best move:", best_move, "Best score:", best_score)
+            print(f"Depth: {depth} - Best value: {best_value} - Move: {best_move}")
+        print(f"Best value: {best_value} - Move: {best_move} - Depth: {depth}")
         return best_move
 
 
+# Play the game
 def play_game():
-    game = TicTacToe(size=8)
-    while not game.is_terminal():
+    game = TicTacToe()
+    search = SearchStrategy()
+
+    while True:
         game.draw_board()
 
         if game.player_turn == "x":
-            print("AI is thinking...")
-            move = game.iterative_deepening(10)
-            game.make_move(move[0], move[1], "x")
+            x, y = map(int, input("Enter your move: ").split())
+            while not game.is_valid_move(x, y):
+                x, y = map(int, input("Invalid move. Enter your move: ").split())
+            game.make_move(x, y, "x")
         else:
-            print("Enter your move:", end=" ")
-            valid_move = False
-            while not valid_move:
-                x, y = map(int, input().split())
-                valid_move = game.make_move(x, y, "o")
-                if not valid_move:
-                    print("Invalid move. Try again.")
+            print("AI is thinking...")
+            x, y = search.find_best_move(game)
+            game.make_move(x, y, "o")
         game.player_turn = "o" if game.player_turn == "x" else "x"
 
-    game.draw_board()
-    if game.check_winner("x"):
-        print("AI wins!")
-    elif game.check_winner("o"):
-        print("You win!")
-    else:
-        print("It's a draw!")
+        if game.check_winner("x"):
+            game.draw_board()
+            print("You win!")
+            break
+        if game.check_winner("o"):
+            game.draw_board()
+            print("AI wins!")
+            break
+        if game.is_terminal():
+            game.draw_board()
+            print("It's a draw!")
+            break
 
 
 play_game()
-# game = TicTacToe(size=5)
-# print(game.minimax(3, float("-inf"), float("inf"), True))

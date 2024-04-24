@@ -2,88 +2,67 @@ import time
 
 
 class SearchStrategy:
-    def __init__(self):
-        self.transposition_table = {}
-
-    def alpha_beta_pruning(
+    def alpha_beat_search(
         self,
         problem,
         depth,
         alpha,
         beta,
-        maximizing_player,
+        max_player=True,
     ):
-        state_key = (problem.board.tobytes(), maximizing_player)
-
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
+        board_hash = problem.hash_board()
+        if board_hash in problem.transposition_table:
+            return problem.transposition_table[board_hash], None
 
         if depth == 0 or problem.is_goal():
             return problem.evaluate(), None
 
         best_move = None
-        moves = problem.get_possible_moves()
-
-        if maximizing_player:
-            max_eval = float("-inf")
-            for move in moves:
+        if max_player:
+            max_value = float("-inf")
+            for move in problem.get_possible_moves():
                 problem.make_move(*move, "x")
-                eval, _ = self.alpha_beta_pruning(
-                    problem, depth - 1, alpha, beta, False
-                )
+                eval, _ = self.alpha_beat_search(problem, depth - 1, alpha, beta, False)
                 problem.undo_move(*move)
 
-                if eval > max_eval:
-                    max_eval = eval
+                if eval > max_value:
+                    max_value = eval
                     best_move = move
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-                
-            self.transposition_table[state_key] = max_eval, best_move
-            return max_eval, best_move
 
+            problem.transposition_table[board_hash] = max_value
+            return max_value, best_move
         else:
-            min_eval = float("inf")
-            for move in moves:
+            min_value = float("inf")
+            for move in problem.get_possible_moves():
                 problem.make_move(*move, "o")
-                eval, _ = self.alpha_beta_pruning(problem, depth - 1, alpha, beta, True)
+                eval, _ = self.alpha_beat_search(problem, depth - 1, alpha, beta, True)
                 problem.undo_move(*move)
 
-                if eval < min_eval:
-                    min_eval = eval
+                if eval < min_value:
+                    min_value = eval
                     best_move = move
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
-                
-            self.transposition_table[state_key] = min_eval, best_move
-            return min_eval, best_move
 
-    def alpha_beta_search(self, problem, limit_depth=10):
+            problem.transposition_table[board_hash] = min_value
+            return min_value, best_move
+
+    def find_best_move(self, problem, depth=4):
         best_move = None
-        best_score = float("-inf") if problem.player_turn == "x" else float("inf")
-        depth = 1
+        best_value = float("-inf")
 
-        start_time = time.time()
-        while True:
-            current_time = time.time()
-            if current_time - start_time >= 5:
-                break
-
-            score, move = self.alpha_beta_pruning(
+        for depth in range(1, depth + 1):
+            value, move = self.alpha_beat_search(
                 problem, depth, float("-inf"), float("inf"), True
             )
-
-            if problem.player_turn == "x" and score > best_score:
-                best_score = score
-                best_move = move
-            elif problem.player_turn == "o" and score < best_score:
-                best_score = score
+            if value > best_value:
+                best_value = value
                 best_move = move
 
-            depth += 1
-            if depth > limit_depth:
-                break
-
+            print(f"Depth: {depth} - Best value: {best_value} - Move: {best_move}")
+        print(f"Best value: {best_value} - Move: {best_move} - Depth: {depth}")
         return best_move

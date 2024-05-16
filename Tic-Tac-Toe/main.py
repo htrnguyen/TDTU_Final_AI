@@ -7,32 +7,25 @@ p = Problem()
 s = SearchStrategy()
 
 while not p.is_goal():
-    os.system("cls" if os.name == "nt" else "clear")
     p.draw_board()
-
     if p.current_player == p.human_player:
-        x, y = map(int, input("Enter your move (x y): ").split())
+        x, y = map(int, input("Enter your move (x y): ").strip().split())
         while not p.make_move(x, y, p.human_player):
-            print("Invalid move!", end=". ")
-            x, y = map(int, input("Enter your move (x y): ").split())
+            print("Invalid move! Try again.")
+            x, y = map(int, input("Enter your move (x y): ").strip().split())
     else:
-        print("AI turn...")
         move = s.alpha_beta_search(p)
         p.make_move(*move, p.ai_player)
         print(f"AI move: {move}")
+    p.switch_player()
+    # os.system("cls" if os.name == "nt" else "clear") 
 
-    p.current_player = (
-        p.human_player if p.current_player == p.ai_player else p.ai_player
-    )
-
-    # Check if the game is over
-    if p.is_goal():
-        os.system("cls" if os.name == "nt" else "clear")
-        p.draw_board()
-        if p.check_winner(p.human_player):
-            print("You win!")
-        elif p.check_winner(p.ai_player):
-            print("AI wins!")
-        else:
-            print("It's a draw!")
-        break
+if p.check_winner(p.human_player):
+    p.draw_board()
+    print("You win!")
+elif p.check_winner(p.ai_player):
+    p.draw_board()
+    print("AI wins!")
+else:
+    p.draw_board()
+    print("It's a draw!")

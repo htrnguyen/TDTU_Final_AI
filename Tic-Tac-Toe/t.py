@@ -1,4 +1,5 @@
 import numpy as np
+import regex as re
 
 class Board:
     HEURISTIC = np.array(
@@ -53,8 +54,6 @@ class Board:
 
     def is_full(self):
         return not np.any(self.board == "-")
-import numpy as np
-import regex as re
 
 class Problem:
     UTILITY = {
@@ -70,10 +69,6 @@ class Problem:
         "Double_1Open_1Blocked": [200, ["bxxe"]],
         "nProbTriplet_2Opens": [100, ["exexe"]],
         "ProbTriplet_1Open": [40, ["bxexee", "eexexb"]],
-        # "Single_2Opens": [10, ["exee"]],
-        # "Single_1Open": [5, ["bxee"]],
-        # "Single_1Open_1Blocked": [2, ["bxe"]],
-        # "Blocked": [0, ["bxxb"]],
     }
 
     def __init__(self, board, human_player="X"):
@@ -161,6 +156,12 @@ class Problem:
 
     def get_valid_moves(self):
         return list(zip(*np.where(self.board.board == "-")))
+
+    def sort_moves(self):
+        center = self.board.size // 2
+        valid_moves = self.get_valid_moves()
+        return sorted(valid_moves, key=lambda move: (abs(move[0] - center) + abs(move[1] - center)))
+
 class SearchStrategy:
     def alpha_beta_search(self, problem, max_depth=2):
         def max_value(problem, alpha, beta, depth):
@@ -168,7 +169,7 @@ class SearchStrategy:
                 return problem.evaluate()
 
             value = float("-inf")
-            for move in problem.get_valid_moves():
+            for move in problem.sort_moves():
                 problem.board.make_move(move[0], move[1], problem.ai_player)
                 value = max(value, min_value(problem, alpha, beta, depth + 1))
                 problem.board.undo_move(move[0], move[1])
@@ -182,7 +183,7 @@ class SearchStrategy:
                 return problem.evaluate()
 
             value = float("inf")
-            for move in problem.get_valid_moves():
+            for move in problem.sort_moves():
                 problem.board.make_move(move[0], move[1], problem.human_player)
                 value = min(value, max_value(problem, alpha, beta, depth + 1))
                 problem.board.undo_move(move[0], move[1])
@@ -196,11 +197,7 @@ class SearchStrategy:
         best_value = float("-inf")
         best_move = None
 
-        for move in sorted(
-            problem.get_valid_moves(),
-            key=lambda x: problem.evaluate_move(x),
-            reverse=True,
-        ):
+        for move in problem.sort_moves():
             problem.board.make_move(move[0], move[1], problem.ai_player)
             value = min_value(problem, alpha, beta, 1)
             problem.board.undo_move(move[0], move[1])
@@ -213,6 +210,7 @@ class SearchStrategy:
                 break
 
         return best_move
+
 class Game:
     def __init__(self, ai_starts=False):
         self.board = Board()

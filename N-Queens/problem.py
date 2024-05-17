@@ -16,24 +16,20 @@ class Problem:
             row_clause = [(i * N + j + 1) for j in range(N)]
             clauses.append(row_clause)  # one row has at least one Queen
 
-            for j1 in range(N):
-                for j2 in range(j1 + 1, N):
-                    clauses.append([-row_clause[j1], -row_clause[j2]])  # one row has at most one Queen
             col_clause = [(j * N + i + 1) for j in range(N)]
             clauses.append(col_clause)  # one column has at least one Queen
 
             for j1 in range(N):
                 for j2 in range(j1 + 1, N):
+                    clauses.append([-row_clause[j1], -row_clause[j2]])  # one row has at most one Queen
                     clauses.append([-col_clause[j1], -col_clause[j2]])  # one column has at most one Queen
 
-        for i in range(N):
-            for j in range(N):
                 for k in range(i + 1, N):
                     d = k - i
-                    if j - d >= 0:
-                        clauses.append([-(i * N + j + 1), -(k * N + j - d + 1)])
-                    if j + d < N:
-                        clauses.append([-(i * N + j + 1), -(k * N + j + d + 1)])
+                    if j1 - d >= 0:
+                        clauses.append([-(i * N + j1 + 1), -(k * N + j1 - d + 1)])
+                    if j1 + d < N:
+                        clauses.append([-(i * N + j1 + 1), -(k * N + j1 + d + 1)])
         return clauses
 
     def add_solution(self, solution):

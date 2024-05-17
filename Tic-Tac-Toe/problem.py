@@ -13,6 +13,7 @@ class Problem:
     """
     UTILITY = {
         "Quartet": [20000000, ["xxxx"]],
+        "KillerMove": [1000000, ["exxx", "xxxe"]],
         "Triplet_2Opens": [400000, ["exxxe"]],
         "Triplet_1Open": [50000, ["bxxxe", "exxxb"]],
         "Double_2Opens": [30000, ["exxe", "eexx"]],

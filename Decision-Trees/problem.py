@@ -4,17 +4,15 @@ import math
 import os
 
 class Problem:
-    def __init__(self, file_path, target_attr, unnecessary_col=[]):
-        self.df = self.load_csv(file_path, unnecessary_col)
-        self.target_attr = target_attr
+    def __init__(self, dataframe, target_attribute, unnecessary_col=[]):
+        self.df = self.set_df(dataframe, unnecessary_col)
+        self.target_attr = target_attribute
         self.attributes = self.set_attribute()
         self.H, self.AE, self.IG = self.calc_H_A_IG()
 
-    def load_csv(self, file_path, unnecessary_col):
-        abs_path = os.path.abspath(file_path)
-        df = pd.read_csv(abs_path)
-
+    def set_df(self, dataframe, unnecessary_col):
         # Drop columns that they are unnecessary or have all values as NaN 
+        df = dataframe.copy()
         nan_cols = df.isna().all()
         nan_cols = nan_cols[nan_cols].index.tolist()
         df.drop(columns=nan_cols + unnecessary_col, inplace=True)
@@ -51,7 +49,7 @@ class Problem:
                 counts = self.df[self.df[attr] == val][self.target_attr].value_counts().to_dict()
                 total = sum(counts.values())
                 H = 0
-                
+
                 for count in counts.values():
                     H += -(count/total) * math.log2(count/total)
 

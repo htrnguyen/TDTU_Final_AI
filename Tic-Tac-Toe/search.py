@@ -5,7 +5,7 @@ class SearchStrategy:
                 return problem.evaluate()
 
             value = float("-inf")
-            for move in problem.get_valid_moves():
+            for move in problem.sort_moves():
                 problem.board.make_move(move[0], move[1], problem.ai_player)
                 value = max(value, min_value(problem, alpha, beta, depth + 1))
                 problem.board.undo_move(move[0], move[1])
@@ -19,7 +19,7 @@ class SearchStrategy:
                 return problem.evaluate()
 
             value = float("inf")
-            for move in problem.get_valid_moves():
+            for move in problem.sort_moves():
                 problem.board.make_move(move[0], move[1], problem.human_player)
                 value = min(value, max_value(problem, alpha, beta, depth + 1))
                 problem.board.undo_move(move[0], move[1])
@@ -33,18 +33,14 @@ class SearchStrategy:
         best_value = float("-inf")
         best_move = None
 
-        for move in sorted(
-            problem.get_valid_moves(),
-            key=lambda x: problem.evaluate_move(x),
-            reverse=True,
-        ):
+        for move in problem.sort_moves():
             problem.board.make_move(move[0], move[1], problem.ai_player)
             value = min_value(problem, alpha, beta, 1)
             problem.board.undo_move(move[0], move[1])
             if value > best_value:
                 best_value = value
                 best_move = move
-                print(f"Best move: {best_move}, value: {best_value}")
+                # print(f"Best move: {best_move}, value: {best_value}")
             alpha = max(alpha, best_value)
             if alpha >= beta:
                 break

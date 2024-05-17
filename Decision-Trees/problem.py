@@ -7,8 +7,8 @@ class Problem:
     def __init__(self, file_path, target_attr, unnecessary_col=[]):
         self.df = self.load_csv(file_path, unnecessary_col)
         self.target_attr = target_attr
-        self.entropy = self.calc_entropy()
-        self.average_entropy = {}
+        self.attributes = self.set_attribute()
+        self.H, self.AE, self.IG = self.calc_H_A_IG()
 
     def load_csv(self, file_path, unnecessary_col):
         abs_path = os.path.abspath(file_path)
@@ -21,26 +21,57 @@ class Problem:
 
         return df
     
-    def calc_entropy(self):
+    def set_attribute(self):
         attributes = self.df.columns.tolist()
         attributes.remove(self.target_attr)
-        entropy_dict = dict()
+        return attributes
+    
+    def calc_H_A_IG(self):
+        entropies = dict()
+        average_entropies = dict()
+        information_gains = dict()
+        H_target = 0
+        target_values = self.df[self.target_attr].unique()
+        total = len(self.df[self.target_attr])
 
-        for attr in attributes:
-            values = self.df[attr].unique()
+        # Calculate entropy of target attribute
+        for t_var in target_values:
+            counts = self.df[self.df[self.target_attr] == t_var][self.target_attr].value_counts().to_dict()
+            
+            for count in counts.values():
+                H_target += -(count/total) * math.log2(count/total)
+
+        # Calculate entropy, average entropy and information gain of other attributes
+        for attr in self.attributes:
+            values = self.df[attr].unique() # value of attribute (Ex: 'Q1' have 8 values: 0,1,2,3,4,5,6,7)
             entropy = dict()
+            I = 0
 
             for val in values:
-                counts = dict(self.df[self.df[attr] == val][self.target_attr].value_counts())
+                counts = self.df[self.df[attr] == val][self.target_attr].value_counts().to_dict()
                 total = sum(counts.values())
-                H = -sum( (count/total) * math.log2(count/total) for count in counts.values())
-                entropy[val] = H
-            entropy_dict[attr] = entropy
+                H = 0
+                
+                for count in counts.values():
+                    H += -(count/total) * math.log2(count/total)
 
-        return entropy_dict
+                entropy[val] = H
+                I += total / len(self.df[attr]) * H
+                
+            entropies[attr] = entropy
+            average_entropies[attr] = I
+            information_gains[attr] = H_target - average_entropies[attr]
+        
+        return entropies, average_entropies, information_gains
+
+    def get_H_attribute(self, attribute):
+        return self.H[attribute]
     
-    def get_entropy_attribute(self, attribute):
-        return self.entropy[attribute]
+    def get_AE_attribute(self, attribute):
+        return self.AE[attribute]
     
-    # def get_average_entropy(self, attribute):
+    def get_IG_attribute(self, attribute):
+        return self.IG[attribute]
+    
+    
 

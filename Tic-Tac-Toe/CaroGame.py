@@ -1,5 +1,6 @@
 import numpy as np
 import regex as re
+from collections import Counter
 
 
 class Problem:
@@ -79,10 +80,7 @@ class Problem:
 
     def check_winner(self, player):
         lines = self.get_all_lines()
-        for line in lines:
-            if "".join(line).find(player * 4) != -1:
-                return True
-        return False
+        return np.any(["".join(line).find(player * 4) != -1 for line in lines])
 
     def is_full(self):
         return not np.any(self.board == "-")
@@ -94,64 +92,72 @@ class Problem:
             or self.is_full()
         )
 
-    def get_valid_moves(self):
-        return [
-            (x, y)
-            for x in range(self.size)
-            for y in range(self.size)
-            if self.is_valid_move((x, y))
-        ]
-
     def evaluate(self):
         return self.calculate_heuristic(self.board, self.ai_player)
 
-    @staticmethod
-    def search_in_list(lists, search_for):
-        return sum(len(re.findall(search_for, lst, overlapped=True)) for lst in lists)
+    def search_in_list(self, lists, search_for):
+        search_for_compiled = re.compile(search_for)
+        return sum(
+            len(search_for_compiled.findall(lst, overlapped=True)) for lst in lists
+        )
 
-    @staticmethod
-    def make_lines(matrix, player):
+    def make_lines(self, matrix, player):
         lines = []
         trans = {player: "x", "-": "e"}
-        trans_default = "n"
 
         def translate(arr):
-            return "".join([trans.get(c, trans_default) for c in arr])
+            return "".join([trans.get(c, "n") for c in arr])
 
-        lines.extend([translate(row) for row in matrix])
-        lines.extend([translate(col) for col in matrix.T])
+        lines = [translate(row) for row in matrix]
+        lines += [translate(col) for col in matrix.T]
 
         for i in range(-matrix.shape[0] + 1, matrix.shape[1]):
-            lines.append(translate(np.diagonal(matrix, i)))
-            lines.append(translate(np.diagonal(np.fliplr(matrix), i)))
+            lines += [
+                translate(np.diagonal(matrix, i)),
+                translate(np.diagonal(np.fliplr(matrix), i)),
+            ]
 
         return lines
 
-    @classmethod
-    def calculate_heuristic(cls, board, player):
+    def calculate_heuristic(self, board, player):
         def get_sequence_heuristic(lines):
             sequence_heuristic = 0
-            for key, (value, patterns) in cls.UTILITY.items():
+            for key, (value, patterns) in self.UTILITY.items():
                 for pattern in patterns:
-                    sequence_heuristic += value * cls.search_in_list(lines, pattern)
+                    sequence_heuristic += value * self.search_in_list(lines, pattern)
             return sequence_heuristic
 
         def get_position_heuristic(board, player):
             player_board = np.where(board == player, 1, 0)
-            return np.sum(player_board * cls.HEURISTIC)
+            return np.sum(player_board * self.HEURISTIC)
 
-        lines = cls.make_lines(board, player)
+        lines = self.make_lines(board, player)
         player_score = get_sequence_heuristic(lines) + get_position_heuristic(
             board, player
         )
 
         opponent = "O" if player == "X" else "X"
-        lines_opponent = cls.make_lines(board, opponent)
+        lines_opponent = self.make_lines(board, opponent)
         opponent_score = get_sequence_heuristic(
             lines_opponent
         ) + get_position_heuristic(board, opponent)
 
         return player_score - 1.05 * opponent_score
+
+    def evaluate_move(self, move):
+        x, y = move
+        temp_board = self.board.copy()
+        temp_board[x][y] = self.ai_player
+        score = self.calculate_heuristic(temp_board, self.ai_player)
+        return score
+
+    def sort_moves(self):
+        valid_moves = self.get_valid_moves()
+        scores = {move: self.evaluate_move(move) for move in valid_moves}
+        return sorted(valid_moves, key=lambda move: -scores[move])
+
+    def get_valid_moves(self):
+        return list(zip(*np.where(self.board == "-")))
 
 
 class SearchStrategy:
@@ -166,9 +172,9 @@ class SearchStrategy:
                 problem.make_move(move[0], move[1], problem.ai_player)
                 value = max(value, min_value(problem, alpha, beta, depth + 1))
                 problem.undo_move(move[0], move[1])
+                if value >= beta:
+                    return value
                 alpha = max(alpha, value)
-                if alpha >= beta:
-                    break
             return value
 
         def min_value(problem, alpha, beta, depth):
@@ -180,9 +186,9 @@ class SearchStrategy:
                 problem.make_move(move[0], move[1], problem.human_player)
                 value = min(value, max_value(problem, alpha, beta, depth + 1))
                 problem.undo_move(move[0], move[1])
+                if value <= alpha:
+                    return value
                 beta = min(beta, value)
-                if alpha >= beta:
-                    break
             return value
 
         alpha = float("-inf")
@@ -190,15 +196,22 @@ class SearchStrategy:
         best_value = float("-inf")
         best_move = None
 
-        for move in problem.get_valid_moves():
+        for move in sorted(
+            problem.get_valid_moves(),
+            key=lambda x: problem.evaluate_move(x),
+            reverse=True,
+        ):
             problem.make_move(move[0], move[1], problem.ai_player)
             value = min_value(problem, alpha, beta, 1)
             problem.undo_move(move[0], move[1])
             if value > best_value:
                 best_value = value
                 best_move = move
-                print(f"Move: {move}, Value: {value}")
+                print(f"Best move: {best_move}, value: {best_value}")
             alpha = max(alpha, best_value)
+            if alpha >= beta:
+                break
+
         return best_move
 
 

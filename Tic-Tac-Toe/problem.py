@@ -103,3 +103,11 @@ class Problem:
 
     def get_valid_moves(self):
         return list(zip(*np.where(self.board.board == "-")))
+
+    def sort_moves(self):
+        center = self.board.size // 2
+        valid_moves = self.get_valid_moves()
+        return sorted(
+            valid_moves,
+            key=lambda move: (abs(move[0] - center) + abs(move[1] - center)),
+        )

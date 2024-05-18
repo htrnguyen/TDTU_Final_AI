@@ -1,4 +1,3 @@
-from board import Board
 from problem import Problem
 from search import SearchStrategy
 import os

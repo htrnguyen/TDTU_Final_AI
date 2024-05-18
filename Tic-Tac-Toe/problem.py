@@ -8,7 +8,7 @@ class Problem:
     Quản lý trạng thái của game và các hàm liên quan
     """
 
-    def __init__(self, size=8, human_player="X", opponent_factor=1.05):
+    def __init__(self, size=8, human_player="X", opponent_factor=0.90):
         """
         Khởi tạo trạng thái game
         """
@@ -96,19 +96,22 @@ class Problem:
         UTILITY: giá trị đánh giá cho các trường hợp trên bàn cờ
         """
         UTILITY = {
-            "Quartet": [20000000, ["xxxx"]],
+            "FourInRow": [20000000, ["xxxx"]],
             "KillerMove": [1000000, ["exxx", "xxxe"]],
-            "Triplet_2Opens": [400000, ["exxxe"]],
-            "Triplet_1Open": [50000, ["bxxxe", "exxxb"]],
-            "Double_2Opens": [30000, ["exxe", "eexx"]],
-            "Double_1Open": [15000, ["bxxe", "eexb"]],
-            "ProbTriplet_2Opens": [7000, ["exexxe", "exxexe"]],
-            "ProbTriplet_1Open": [3000, ["bxexxe", "bxxexe", "exxexb", "exexxb"]],
-            "Single_2Opens": [500, ["exee", "eeex"]],
-            "Single_1Open": [400, ["bxe", "eexb"]],
-            "Single_1Open_1Blocked": [200, ["bxe"]],
-            "nProbDouble_2Opens": [100, ["exxe"]],
-            "ProbSingle_1Open": [40, ["bxeee", "eeexb"]],
+            "ThreeInRow_OpenBothEnds": [400000, ["exxxe"]],
+            "ThreeInRow_OneOpenEnd": [50000, ["bxxxe", "exxxb"]],
+            "TwoInRow_OpenBothEnds": [30000, ["exxe", "eexx"]],
+            "TwoInRow_OneOpenEnd": [15000, ["bxxe", "eexb"]],
+            "PotentialThreeInRow_OpenBothEnds": [7000, ["exexxe", "exxexe"]],
+            "PotentialThreeInRow_OneOpenEnd": [
+                3000,
+                ["bxexxe", "bxxexe", "exxexb", "exexxb"],
+            ],
+            "SinglePiece_OpenBothEnds": [500, ["exee", "eeex"]],
+            "SinglePiece_OneOpenEnd": [400, ["bxe", "eexb"]],
+            "SinglePiece_OneOpenOneBlocked": [200, ["bxe"]],
+            "PotentialTwoInRow_OpenBothEnds": [100, ["exxe"]],
+            "PotentialSinglePiece_OneOpenEnd": [40, ["bxeee", "eeexb"]],
         }
 
         def get_sequence_score(lines):

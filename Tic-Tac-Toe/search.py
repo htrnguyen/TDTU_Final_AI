@@ -1,49 +1,48 @@
-import time
-
-
 class SearchStrategy:
-    def alpha_beta_pruning(self, problem, depth, alpha, beta, maximizing_player):
-        if depth == 0 or problem.is_goal():
-            return problem.evaluate(), None
-
-        moves = problem.order_moves(maximizing_player)
-        best_move = None
-        for move in moves:
-            problem.make_move(*move, problem.current_player)
-            eval, _ = self.alpha_beta_pruning(
-                problem, depth - 1, alpha, beta, not maximizing_player
-            )
-            problem.undo_move(*move)
-            
-            if maximizing_player:
-                if eval > alpha:
-                    alpha = eval
-                    best_move = move
-            else:
-                if eval < beta:
-                    beta = eval
-                    best_move = move
-                    
-            if alpha >= beta:
-                break
-        if maximizing_player:
-            return alpha, best_move
-        else:
-            return beta, best_move
-
     def alpha_beta_search(self, problem, max_depth=2):
-        best_eval = float("-inf")
-        best_move = None
+        def max_value(problem, alpha, beta, depth):
+            if problem.is_goal() or depth >= max_depth:
+                return problem.evaluate()
+
+            value = float("-inf")
+            for move in problem.sort_moves():
+                problem.board.make_move(move[0], move[1], problem.ai_player)
+                value = max(value, min_value(problem, alpha, beta, depth + 1))
+                problem.board.undo_move(move[0], move[1])
+                if value >= beta:
+                    return value
+                alpha = max(alpha, value)
+            return value
+
+        def min_value(problem, alpha, beta, depth):
+            if problem.is_goal() or depth >= max_depth:
+                return problem.evaluate()
+
+            value = float("inf")
+            for move in problem.sort_moves():
+                problem.board.make_move(move[0], move[1], problem.human_player)
+                value = min(value, max_value(problem, alpha, beta, depth + 1))
+                problem.board.undo_move(move[0], move[1])
+                if value <= alpha:
+                    return value
+                beta = min(beta, value)
+            return value
+
         alpha = float("-inf")
         beta = float("inf")
-        for depth in range(1, max_depth + 1):
-            start_time = time.time()
-            eval, move = self.alpha_beta_pruning(problem, depth, alpha, beta, True)
-            if eval > best_eval:
-                best_eval = eval
+        best_value = float("-inf")
+        best_move = None
+
+        for move in problem.sort_moves():
+            problem.board.make_move(move[0], move[1], problem.ai_player)
+            value = min_value(problem, alpha, beta, 1)
+            problem.board.undo_move(move[0], move[1])
+            if value > best_value:
+                best_value = value
                 best_move = move
-            end_time = time.time() - start_time
-            print(
-                f"Depth: {depth}, Time: {end_time:.2f}, Best Eval: {best_eval}, Best Move: {best_move}"
-            )
+                # print(f"Best move: {best_move}, value: {best_value}")
+            alpha = max(alpha, best_value)
+            if alpha >= beta:
+                break
+
         return best_move

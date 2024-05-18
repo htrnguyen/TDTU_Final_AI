@@ -4,18 +4,18 @@ import math
 import os
 
 class Problem:
-    def __init__(self, dataframe, target_attribute, unnecessary_col=[]):
-        self.df = self.set_df(dataframe, unnecessary_col)
+    def __init__(self, dataframe, target_attribute):
+        self.df = self.set_df(dataframe)
         self.target_attr = target_attribute
         self.attributes = self.set_attribute()
         self.H, self.AE, self.IG = self.calc_H_A_IG()
 
-    def set_df(self, dataframe, unnecessary_col):
+    def set_df(self, dataframe):
         # Drop columns that they are unnecessary or have all values as NaN 
         df = dataframe.copy()
         nan_cols = df.isna().all()
         nan_cols = nan_cols[nan_cols].index.tolist()
-        df.drop(columns=nan_cols + unnecessary_col, inplace=True)
+        df.drop(columns=nan_cols, inplace=True)
 
         return df
     
@@ -62,6 +62,9 @@ class Problem:
         
         return entropies, average_entropies, information_gains
 
+    def get_df(self):
+        return self.df
+    
     def get_H_attribute(self, attribute):
         return self.H[attribute]
     

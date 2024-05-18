@@ -1,3 +1,6 @@
+'''
+5
+'''
 class SearchStrategy:
     '''
     Chiến lược tìm kiếm

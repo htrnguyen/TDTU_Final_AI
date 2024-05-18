@@ -7,12 +7,12 @@ class Game:
     '''
     Quản lý game và các hàm liên quan
     '''
-    def __init__(self, ai_starts=False, size=8):
+    def __init__(self, ai_starts=False):
         '''
         Khởi tạo game với bàn cờ kích thước size x size
         '''
-        self.board = Board(size)
-        self.problem = Problem(self.board)
+        self.problem = Problem()
+        self.board = self.problem.board
         self.strategy = SearchStrategy()
         self.ai_starts = ai_starts
 

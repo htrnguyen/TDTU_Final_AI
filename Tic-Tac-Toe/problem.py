@@ -27,13 +27,14 @@ class Problem:
         "ProbSingle_1Open": [40, ["bxeee", "eeexb"]],
     }
 
-    def __init__(self, board, human_player="X"):
+    def __init__(self, size=8, human_player="X", opponent_factor=1.05):
         """
         Khởi tạo trạng thái game
         """
-        self.board = board
+        self.board = Board(size)
         self.human_player = human_player
         self.ai_player = "O" if human_player == "X" else "X"
+        self.opponent_factor = opponent_factor
         self.current_player = self.human_player
 
     def switch_player(self):
@@ -138,7 +139,7 @@ class Problem:
             board, opponent
         )
 
-        return player_score - 1.05 * opponent_score
+        return player_score - self.opponent_factor * opponent_score
 
     def evaluate_move(self, move):
         """

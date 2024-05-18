@@ -153,11 +153,14 @@ class Problem:
 
     def sort_moves(self):
         """
-        Sắp xếp các nước đi theo thứ tự gần tâm bàn cờ
+        Sắp xếp các nước đi tiềm năng dựa trên giá trị heuristic
         """
-        center = self.board.size // 2
-        valid_moves = self.get_valid_moves()
-        return sorted(
-            valid_moves,
-            key=lambda move: (abs(move[0] - center) + abs(move[1] - center)),
-        )
+        moves = []
+        for x in range(self.board.size):
+            for y in range(self.board.size):
+                if self.board.is_valid_move((x, y)):
+                    moves.append((x, y, self.board.HEURISTIC[x][y]))
+        moves.sort(
+            key=lambda move: move[2], reverse=True
+        )  # Sắp xếp theo giá trị heuristic
+        return [(x, y) for x, y, _ in moves]

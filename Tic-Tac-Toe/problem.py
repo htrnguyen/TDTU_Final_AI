@@ -10,7 +10,7 @@ class Problem:
     Quản lý trạng thái của game và các hàm liên quan
     """
 
-    def __init__(self, size=8, human_player="X", opponent_factor=1.1):
+    def __init__(self, size=8, human_player="X", opponent_factor=1.05):
         """
         Khởi tạo trạng thái game
         """

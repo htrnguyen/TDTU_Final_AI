@@ -2,68 +2,61 @@ class SearchStrategy:
     """
     Chiến lược tìm kiếm sử dụng thuật toán Alpha-Beta Pruning
     """
-    
-    def __init__(self, max_depth=2):
+
+    def __init__(self, max_depth=1):
         self.max_depth = max_depth
 
-    def alpha_beta_pruning(self, problem, alpha, beta, depth):
-        """
-        Alpha-beta pruning
-        """
-        def max_value(problem, alpha, beta, depth):
-            if depth >= self.max_depth or problem.is_game_over():
-                return problem.evaluate()
-            
-            v = float("-inf")
-            current_player = problem.current_player
-            problem.current_player = problem.ai_player
-            for move in problem.sort_moves():
-                problem.board.make_move(*move, problem.ai_player)
-                v = max(v, min_value(problem, alpha, beta, depth + 1))
-                problem.board.undo_move(*move)
-                if v >= beta:
-                    problem.current_player = current_player
-                    return v
-                alpha = max(alpha, v)
-            problem.current_player = current_player
-            return v
-
-        def min_value(problem, alpha, beta, depth):
-            if depth >= self.max_depth or problem.is_game_over():
-                return problem.evaluate()
-            
-            v = float("inf")
-            current_player = problem.current_player
-            problem.current_player = problem.human_player
-            for move in problem.sort_moves():
-                problem.board.make_move(*move, problem.human_player)
-                v = min(v, max_value(problem, alpha, beta, depth + 1))
-                problem.board.undo_move(*move)
-                if v <= alpha:
-                    problem.current_player = current_player
-                    return v
-                beta = min(beta, v)
-            problem.current_player = current_player
-            return v
-        
-        best_move = None
-        v = float("-inf")
-        current_player = problem.current_player
-        for move in problem.sort_moves():
-            problem.board.make_move(*move, problem.ai_player)
-            move_value = min_value(problem, alpha, beta, 1)
-            problem.board.undo_move(*move)
-            if move_value > v:
-                v = move_value
-                best_move = move
-            alpha = max(alpha, v)
-            if alpha >= beta:
-                break
-        problem.current_player = current_player
-        return best_move
-        
     def alpha_beta_search(self, problem):
         """
-        Alpha-beta search
+        Tìm kiếm nước đi tốt nhất cho AI sử dụng thuật toán Alpha-Beta Pruning
         """
-        return self.alpha_beta_pruning(problem, float("-inf"), float("inf"), 0)
+
+        def max_value(problem, alpha, beta, depth):
+            if problem.is_game_over() or depth >= self.max_depth:
+                return problem.evaluate()
+
+            value = float("-inf")
+            for move in problem.sort_moves():
+                problem.board.make_move(*move, problem.ai_player)
+                value = max(value, min_value(problem, alpha, beta, depth + 1))
+                problem.board.undo_move(*move)
+
+                if value >= beta:
+                    return value
+                alpha = max(alpha, value)
+
+            return value
+
+        def min_value(problem, alpha, beta, depth):
+            if problem.is_game_over() or depth >= self.max_depth:
+                return problem.evaluate()
+
+            value = float("inf")
+            for move in problem.sort_moves():
+                problem.board.make_move(*move, problem.human_player)
+                value = min(value, max_value(problem, alpha, beta, depth + 1))
+                problem.board.undo_move(*move)
+
+                if value <= alpha:
+                    return value
+                beta = min(beta, value)
+
+            return value
+
+        best_move = None
+        best_value = float("-inf")
+        alpha = float("-inf")
+        beta = float("inf")
+
+        for move in problem.sort_moves():
+            problem.board.make_move(*move, problem.ai_player)
+            value = min_value(problem, alpha, beta, 0)
+            problem.board.undo_move(*move)
+
+            if value > best_value:
+                best_value = value
+                best_move = move
+                print(f"Move: {move}, Value: {value}")
+            alpha = max(alpha, best_value)
+
+        return best_move

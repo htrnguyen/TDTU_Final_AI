@@ -14,22 +14,9 @@ class Board:
         self.size = size
         self.empty = "·"
         self.board = np.full((self.size, self.size), self.empty, dtype=str)
-        self.HEURISTIC = self.generate_heuristic(size)
 
-    def generate_heuristic(self, size):
-        """
-        Tạo mảng 2 chiều lưu giá trị heuristic cho mỗi ô
-        Giá trị heuristic = min(i, j, size - i - 1, size - j - 1)
-        Example: size = 3
-            0 0 0
-            0 1 0
-            0 0 0
-        """
-        heuristic = np.zeros((size, size), dtype=int)
-        for i in range(size):
-            for j in range(size):
-                heuristic[i][j] = min(i, j, size - i - 1, size - j - 1)
-        return heuristic
+
+
 
     def draw(self):
         """

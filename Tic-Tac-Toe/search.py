@@ -5,7 +5,7 @@ class SearchStrategy:
     '''
     Chiến lược tìm kiếm
     '''
-    def alpha_beta_search(self, game, max_depth=2):
+    def alpha_beta_pruning(self, game, max_depth=2):
         '''
         Alpha-beta pruning
         '''
@@ -62,3 +62,11 @@ class SearchStrategy:
                 break
 
         return best_move
+    
+    def alpha_beta_search(self, problem):
+        best_move = None
+        limit_depth = 2
+        for depth in range(1, limit_depth + 1):
+            best_move = self.alpha_beta_pruning(problem, depth)
+        return best_move
+    

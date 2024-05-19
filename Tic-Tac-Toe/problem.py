@@ -104,6 +104,12 @@ class Problem:
             ]
 
         return lines
+    
+    def hash_board(self):
+        """
+        Hash bàn cờ
+        """
+        return hash(self.board.board.tostring())
 
     def calculate_heuristic(self, board, player):
         """
@@ -114,10 +120,13 @@ class Problem:
         UTILITY: giá trị đánh giá cho các trường hợp trên bàn cờ
         """
         UTILITY = {
-            "FourInRow": [1000000, ["xxxx"]],
-            "KillerMove": [100000, ["exxx", "xxxe"]],
-            "ThreeInRow_OpenBothEnds": [50000, ["exxxe"]],
-            "ThreeInRow_OneOpenEnd": [10000, ["bxxxe", "exxxb"]],
+            "FourInRow": [
+                10000000,
+                ["xxxx"],
+            ],  # Tăng giá trị của FourInRow để ưu tiên chiến thắng
+            "KillerMove": [1000000, ["exxx", "xxxe"]],
+            "ThreeInRow_OpenBothEnds": [500000, ["exxxe"]],
+            "ThreeInRow_OneOpenEnd": [50000, ["bxxxe", "exxxb"]],
             "TwoInRow_OpenBothEnds": [5000, ["exxe", "eexx", "xxee"]],
             "TwoInRow_OneOpenEnd": [1000, ["bxxe", "eexb", "exxb", "bexx"]],
             "PotentialThreeInRow_OpenBothEnds": [700, ["exexxe", "exxexe", "eexexx"]],

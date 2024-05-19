@@ -56,7 +56,7 @@ class SearchStrategy:
             if value > best_value:
                 best_value = value
                 best_move = move
-                print(f"Move: {move}, Value: {value}")
+                # print(f"Move: {move}, Value: {value}")
             alpha = max(alpha, best_value)
 
         return best_move

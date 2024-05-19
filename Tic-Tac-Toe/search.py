@@ -1,18 +1,17 @@
-'''
-5
-'''
 class SearchStrategy:
-    '''
+    """
     Chiến lược tìm kiếm
-    '''
+    """
+
     def alpha_beta_pruning(self, game, max_depth=2):
-        '''
+        """
         Alpha-beta pruning
-        '''
+        """
+
         def max_value(game, alpha, beta, depth):
-            '''
+            """
             Tìm giá trị lớn nhất
-            '''
+            """
             if game.is_game_over() or depth >= max_depth:
                 return game.evaluate()
 
@@ -27,9 +26,9 @@ class SearchStrategy:
             return value
 
         def min_value(game, alpha, beta, depth):
-            '''
+            """
             Tìm giá trị nhỏ nhất
-            '''
+            """
             if game.is_game_over() or depth >= max_depth:
                 return game.evaluate()
 
@@ -62,11 +61,10 @@ class SearchStrategy:
                 break
 
         return best_move
-    
+
     def alpha_beta_search(self, problem):
         best_move = None
         limit_depth = 2
         for depth in range(1, limit_depth + 1):
             best_move = self.alpha_beta_pruning(problem, depth)
         return best_move
-    

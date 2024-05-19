@@ -15,9 +15,6 @@ class Board:
         self.empty = "·"
         self.board = np.full((self.size, self.size), self.empty, dtype=str)
 
-
-
-
     def draw(self):
         """
         Hiển thị bàn cờ trên màn hình console
@@ -32,7 +29,9 @@ class Board:
         Kiểm tra nước đi có hợp lệ
         """
         x, y = move
-        return 0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == self.empty
+        return (
+            0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == self.empty
+        )
 
     def make_move(self, x, y, player):
         """

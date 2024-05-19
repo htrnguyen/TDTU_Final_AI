@@ -10,7 +10,7 @@ class Problem:
     Quản lý trạng thái của game và các hàm liên quan
     """
 
-    def __init__(self, size=8, human_player="X", opponent_factor=1.05):
+    def __init__(self, size=8, human_player="X", opponent_factor=1.1):
         """
         Khởi tạo trạng thái game
         """
@@ -20,7 +20,6 @@ class Problem:
         self.opponent_factor = opponent_factor
         self.current_player = self.human_player
         self.HEURISTIC = self.generate_heuristic(size)
-        self.evaluation_cache = {}
 
     def generate_heuristic(self, size):
         """
@@ -74,19 +73,7 @@ class Problem:
         """
         Hàm đánh giá trạng thái game
         """
-        board_hash = self.hash_board()
-        if board_hash in self.evaluation_cache:
-            return self.evaluation_cache[board_hash]
-
-        score = self.calculate_heuristic(self.board.board, self.ai_player)
-        self.evaluation_cache[board_hash] = score
-        return score
-
-    def hash_board(self):
-        """
-        Hash bàn cờ
-        """
-        return hash(self.board.board.tostring())
+        return self.calculate_heuristic(self.board.board, self.ai_player)
 
     def count_patterns_in_lines(self, lines, pattern):
         """
